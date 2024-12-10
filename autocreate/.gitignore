@@ -31,8 +31,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-# Ignore Google Cloud servic
-/gen-lang-client-0507264739-addff9c90012.json
+# Ignore all JSON files matching this pattern
+/gen-lang-client-*.json
 
 
 # vercel
