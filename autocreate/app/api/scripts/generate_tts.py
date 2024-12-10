@@ -10,7 +10,7 @@ import json
 
 # Load sensitive constants from environment variables
 FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "16FJ3cjCFcqbXXqi2YkUsx3lMzF9jXNdJ")
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "/home/cpow/Desktop/video-generator/autocreate/app/gen-lang-client-0507264739-addff9c90012.json")
+SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_FILE", "/home/cpow/Desktop/video-generator-1/autocreate/app/gen-lang-client-0507264739-d75d11dcb90d.json")
 OUTPUT_DIR = "output_audio_files"
 
 # Ensure text input is provided
