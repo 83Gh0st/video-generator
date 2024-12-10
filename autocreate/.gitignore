@@ -32,7 +32,8 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 # Ignore all JSON files matching this pattern
-/gen-lang-client-*.json
+autocreate/app/gen-lang-client-*.json
+
 
 
 # vercel
