@@ -17,9 +17,9 @@ function CreateNew() {
         imagestyle: "",
     });
     const [loading, setLoading] = useState(false);
-    const [videoScript, setVideoScript] = useState(null);
+    const [videoScript, setVideoScript] = useState([]);
     const [captions,setCaptions]=useState();
-
+    const [imageList,setImageList] =useState();
     const onHandleInputChange = (fieldName, fieldValue) => {
         setFormData((prev) => ({
             ...prev,
@@ -62,7 +62,6 @@ function CreateNew() {
                     const captions = await GenerateAudioCaption(googleDriveLink);
                     console.log("Generated Captions Object:", captions);
                     setCaptions(captions);
-                  
                 } catch (error) {
                     console.error("Error generating captions:", error);
                     alert("Failed to generate captions. Please try again later.");
@@ -74,7 +73,15 @@ function CreateNew() {
                 alert("Failed to generate captions. TTS audio not found.");
                 setLoading(false);
             }
-            
+    
+            // Ensure videoScript is set before generating images
+            if (videoScript && videoScript.length > 0) {
+                GenerateImage(); // Call to generate images only when videoScript is ready
+            } else {
+                console.error("Video script is empty or not generated correctly.");
+                alert("Failed to generate video script. Please try again later.");
+                setLoading(false);
+            }
         } catch (error) {
             console.error("Error fetching video script or processing audio:", error);
             setLoading(false);
@@ -177,6 +184,43 @@ function CreateNew() {
     
     
     
+    const GenerateImage = async () => {
+        if (!videoScript || videoScript.length === 0) {
+            console.error("videoScript is empty or undefined.");
+            return;
+        }
+    
+        setLoading(true);
+    
+        try {
+            // Create promises for each API call
+            const promises = videoScript
+                .filter((element) => element?.ImagePrompt) // Filter out invalid prompts
+                .map((element) =>
+                    axios.post('/api/generate-image', {
+                        prompt: element.ImagePrompt,
+                    })
+                );
+    
+            // Use Promise.allSettled to handle partial failures
+            const results = await Promise.allSettled(promises);
+    
+            // Filter fulfilled promises and extract image URLs
+            const images = results
+                .filter((result) => result.status === "fulfilled") // Keep only successful results
+                .map((result) => result.value.data.result); // Extract URLs from successful responses
+    
+            // Log all image URLs to the console
+            console.log("Generated Image URLs:", images);
+    
+            // Update state with the new list of image URLs
+            setImageList(images);
+        } catch (error) {
+            console.error("Error generating images:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
     
     
     
