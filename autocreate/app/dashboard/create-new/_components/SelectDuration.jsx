@@ -11,8 +11,11 @@ import {
 
 function SelectDuration({ onUserSelect }) {
     const durationOptions = [
+        { label: "15 Seconds", value: "15 seconds" },
+
         { label: "30 Seconds", value: "30 seconds" },
         { label: "60 Seconds", value: "60 seconds" },
+
     ];
 
     const [selectedOption, setSelectedOption] = useState("");

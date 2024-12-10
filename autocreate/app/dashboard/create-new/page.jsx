@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import SelectTopic from "./_components/SelectTopic";
 import SelectStyle from "./_components/SelectStyle";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import axios from "axios";
 import CustomLoading from "./_components/CustomLoading";
 import { v4  as uuidv4 } from 'uuid';
 import { fileURLToPath } from "url";
+import { VideoDataContext } from "@/app/_context/VideoDataContext";
 
 function CreateNew() {
     const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ function CreateNew() {
     const [videoScript, setVideoScript] = useState([]);
     const [captions,setCaptions]=useState();
     const [imageList,setImageList] =useState();
+    const {videoData,setVideoData} =useContext(VideoDataContext);
     const onHandleInputChange = (fieldName, fieldValue) => {
         setFormData((prev) => ({
             ...prev,
@@ -29,6 +31,7 @@ function CreateNew() {
 
     const onCreateClickHandler = () => {
         GetVideoScript();
+        
     };
 
     const GetVideoScript = async () => {
@@ -52,9 +55,17 @@ function CreateNew() {
     
             const videoScript = result.data.result;
             setVideoScript(videoScript);
+            setVideoData(prev => ({
+                ...prev,
+                'videoScript': videoScript
+            }));
     
             // Generate TTS and get the local path to the audio file
             const googleDriveLink = await generateTTS(videoScript);
+            setVideoData(prev => ({
+                ...prev,
+                'googleDriveLink': googleDriveLink
+            }));
     
             if (googleDriveLink) {
                 try {
@@ -62,32 +73,36 @@ function CreateNew() {
                     const captions = await GenerateAudioCaption(googleDriveLink);
                     console.log("Generated Captions Object:", captions);
                     setCaptions(captions);
+                    setVideoData(prev => ({
+                        ...prev,
+                        'captions': captions
+                    }));
                 } catch (error) {
                     console.error("Error generating captions:", error);
                     alert("Failed to generate captions. Please try again later.");
-                } finally {
-                    setLoading(false);
                 }
             } else {
                 console.error("Audio file path is not available.");
                 alert("Failed to generate captions. TTS audio not found.");
-                setLoading(false);
-            }
-    
-            // Ensure videoScript is set before generating images
-            if (videoScript && videoScript.length > 0) {
-                GenerateImage(); // Call to generate images only when videoScript is ready
-            } else {
-                console.error("Video script is empty or not generated correctly.");
-                alert("Failed to generate video script. Please try again later.");
-                setLoading(false);
             }
         } catch (error) {
             console.error("Error fetching video script or processing audio:", error);
             setLoading(false);
             alert("Failed to generate video script or process audio. Please try again later.");
+        } finally {
+            setLoading(false);
         }
     };
+    
+    // UseEffect to trigger image generation only after videoScript is set
+    useEffect(() => {
+        if (videoScript && videoScript.length > 0) {
+            GenerateImage();
+        } else {
+            console.error("Video script is empty or not generated correctly.");
+        }
+    }, [videoScript]); // Only run when videoScript is updated
+    
     
     
     
@@ -205,16 +220,32 @@ function CreateNew() {
             // Use Promise.allSettled to handle partial failures
             const results = await Promise.allSettled(promises);
     
-            // Filter fulfilled promises and extract image URLs
+            // Log the entire results array for debugging
+            console.log("All results:", results);
+    
+            // Extract successful results and check for the correct imagePath
             const images = results
                 .filter((result) => result.status === "fulfilled") // Keep only successful results
-                .map((result) => result.value.data.result); // Extract URLs from successful responses
+                .map((result) => {
+                    if (result.value?.data?.imagePath) {
+                        return result.value.data.imagePath; // Extract valid image URLs
+                    } else {
+                        console.warn("Missing imagePath in response:", result.value);
+                        return undefined; // Handle missing imagePath gracefully
+                    }
+                })
+                .filter((url) => url !== undefined); // Remove undefined values
     
-            // Log all image URLs to the console
+            // Log all extracted image URLs to the console
             console.log("Generated Image URLs:", images);
     
             // Update state with the new list of image URLs
             setImageList(images);
+            setVideoData(prev => ({
+                ...prev,
+                'imageUrls': images // directly use the `images` array here
+             }));
+             
         } catch (error) {
             console.error("Error generating images:", error);
         } finally {
@@ -222,6 +253,9 @@ function CreateNew() {
         }
     };
     
+    useEffect(()=>{
+        console.log(videoData);
+    },[videoData])
     
     
     
