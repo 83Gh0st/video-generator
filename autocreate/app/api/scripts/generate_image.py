@@ -25,7 +25,8 @@ if not HF_API_TOKEN:
 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 API_URLS = [
     "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2",  # Stable Diffusion (as fallback)
-    "https://api-inference.huggingface.co/models/CompVis/biggan-deep-256",  # BigGAN
+    "https://api-inference.huggingface.co/models/CompVis/biggan-deep-256", 
+    "https://api-inference.huggingface.co/models/openai/dall-e-2"
     "https://api-inference.huggingface.co/models/CompVis/vqgan-clip",  # VQGAN+CLIP
     "https://api-inference.huggingface.co/models/artbreeder/portraits",  # Artbreeder Portraits
     "https://api-inference.huggingface.co/models/THU-KEG/cogview",  # CogView

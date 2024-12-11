@@ -10,6 +10,10 @@ import CustomLoading from "./_components/CustomLoading";
 import { v4  as uuidv4 } from 'uuid';
 import { fileURLToPath } from "url";
 import { VideoDataContext } from "@/app/_context/VideoDataContext";
+import { VideoData } from "@/config/schema";
+import { useUser } from "@clerk/nextjs";
+import PlayerDialog from "../_components/PlayerDialog";
+import { db } from "@/config/db";
 
 function CreateNew() {
     const [formData, setFormData] = useState({
@@ -21,7 +25,11 @@ function CreateNew() {
     const [videoScript, setVideoScript] = useState([]);
     const [captions,setCaptions]=useState();
     const [imageList,setImageList] =useState();
+
+    const [playVideo,setPlayVideo] =useState(false);
+    const [videoId,setVideoId] =useState();
     const {videoData,setVideoData} =useContext(VideoDataContext);
+    const {user} =useUser();
     const onHandleInputChange = (fieldName, fieldValue) => {
         setFormData((prev) => ({
             ...prev,
@@ -33,76 +41,77 @@ function CreateNew() {
         GetVideoScript();
         
     };
-
     const GetVideoScript = async () => {
-        if (!formData.duration || !formData.topic || !formData.imagestyle) {
-            console.error("Missing required fields in formData:", formData);
-            return alert("Please complete all fields before creating the video.");
-        }
-    
-        const prompt = `Write a script to generate a ${formData.duration} video on the topic: "Interesting Historical Facts" along with AI image prompts in ${formData.imagestyle} format for each scene. Provide the result in JSON format with fields: "ImagePrompt" and "ContentText".`;
-    
         try {
+            // Step 1: Validate Input Fields
+            if (!formData.duration || !formData.topic || !formData.imagestyle) {
+                console.error("Missing required fields in formData:", formData);
+                alert("Please complete all fields before creating the video.");
+                return;
+            }
+    
             setLoading(true);
     
-            const result = await axios.post("/api/get-video-script", { prompt });
+            // Step 2: Generate Video Script
+            const prompt = `Write a script to generate a ${formData.duration} video on the topic: "${formData.topic}" along with AI image prompts in ${formData.imagestyle} format for each scene. Provide the result in JSON format with fields: "ImagePrompt" and "ContentText".`;
     
-            if (!result.data || !Array.isArray(result.data.result)) {
-                console.error("Unexpected response format:", result);
-                setLoading(false);
-                return alert("Invalid response from server. Please try again.");
+            const scriptResponse = await axios.post("/api/get-video-script", { prompt });
+    
+            if (!scriptResponse.data || !Array.isArray(scriptResponse.data.result)) {
+                console.error("Unexpected response format for video script:", scriptResponse);
+                alert("Invalid response from server. Please try again.");
+                return;
             }
     
-            const videoScript = result.data.result;
+            const videoScript = scriptResponse.data.result;
             setVideoScript(videoScript);
-            setVideoData(prev => ({
-                ...prev,
-                'videoScript': videoScript
-            }));
+            setVideoData((prev) => ({ ...prev, videoScript }));
     
-            // Generate TTS and get the local path to the audio file
+            // Step 3: Generate Text-to-Speech (TTS)
             const googleDriveLink = await generateTTS(videoScript);
-            setVideoData(prev => ({
-                ...prev,
-                'googleDriveLink': googleDriveLink
-            }));
     
-            if (googleDriveLink) {
-                try {
-                    // Generate captions using the audio file path
-                    const captions = await GenerateAudioCaption(googleDriveLink);
-                    console.log("Generated Captions Object:", captions);
-                    setCaptions(captions);
-                    setVideoData(prev => ({
-                        ...prev,
-                        'captions': captions
-                    }));
-                } catch (error) {
-                    console.error("Error generating captions:", error);
-                    alert("Failed to generate captions. Please try again later.");
-                }
-            } else {
-                console.error("Audio file path is not available.");
-                alert("Failed to generate captions. TTS audio not found.");
+            if (!googleDriveLink) {
+                console.error("TTS generation failed.");
+                alert("Failed to generate TTS audio. Please try again.");
+                return;
             }
+    
+            setVideoData((prev) => ({ ...prev, googleDriveLink }));
+    
+            // Step 4: Generate Captions
+            const captions = await GenerateAudioCaption(googleDriveLink);
+    
+            if (!captions || captions.length === 0) {
+                console.error("Caption generation failed.");
+                alert("Failed to generate captions. Please try again.");
+                return;
+            }
+    
+            setCaptions(captions);
+            setVideoData((prev) => ({ ...prev, captions }));
+    
+            // Step 5: Generate Images
+            const imagesGenerated = await GenerateImage(videoScript);
+    
+            if (!imagesGenerated) {
+                console.error("Image generation failed.");
+                alert("Failed to generate images. Please try again.");
+                return;
+            }
+    
+            console.log("Images successfully generated:", imagesGenerated);
+    
         } catch (error) {
-            console.error("Error fetching video script or processing audio:", error);
-            setLoading(false);
-            alert("Failed to generate video script or process audio. Please try again later.");
+            console.error("Error in GetVideoScript:", error);
+            alert("An error occurred while generating video data. Please try again.");
         } finally {
             setLoading(false);
         }
     };
     
-    // UseEffect to trigger image generation only after videoScript is set
-    useEffect(() => {
-        if (videoScript && videoScript.length > 0) {
-            GenerateImage();
-        } else {
-            console.error("Video script is empty or not generated correctly.");
-        }
-    }, [videoScript]); // Only run when videoScript is updated
     
+    
+
     
     
     
@@ -199,64 +208,105 @@ function CreateNew() {
     
     
     
-    const GenerateImage = async () => {
+    const GenerateImage = async (videoScript) => {
         if (!videoScript || videoScript.length === 0) {
             console.error("videoScript is empty or undefined.");
-            return;
+            return null; // Explicitly return null to indicate failure
         }
     
         setLoading(true);
     
         try {
-            // Create promises for each API call
             const promises = videoScript
-                .filter((element) => element?.ImagePrompt) // Filter out invalid prompts
+                .filter((element) => element?.ImagePrompt)
                 .map((element) =>
-                    axios.post('/api/generate-image', {
-                        prompt: element.ImagePrompt,
-                    })
+                    axios.post("/api/generate-image", { prompt: element.ImagePrompt })
                 );
     
-            // Use Promise.allSettled to handle partial failures
             const results = await Promise.allSettled(promises);
     
-            // Log the entire results array for debugging
-            console.log("All results:", results);
+            console.log("API call results:", results);
     
-            // Extract successful results and check for the correct imagePath
             const images = results
-                .filter((result) => result.status === "fulfilled") // Keep only successful results
-                .map((result) => {
-                    if (result.value?.data?.imagePath) {
-                        return result.value.data.imagePath; // Extract valid image URLs
-                    } else {
-                        console.warn("Missing imagePath in response:", result.value);
-                        return undefined; // Handle missing imagePath gracefully
-                    }
-                })
-                .filter((url) => url !== undefined); // Remove undefined values
+                .filter((result) => result.status === "fulfilled" && result.value?.data?.imagePath)
+                .map((result) => result.value.data.imagePath);
     
-            // Log all extracted image URLs to the console
-            console.log("Generated Image URLs:", images);
+            if (images.length === 0) {
+                console.warn("No valid images generated.");
+                return null; // Return null if no images were successfully generated
+            }
     
-            // Update state with the new list of image URLs
             setImageList(images);
-            setVideoData(prev => ({
+            setVideoData((prev) => ({
                 ...prev,
-                'imageUrls': images // directly use the `images` array here
-             }));
-             
+                imageUrls: images,
+            }));
+    
+            return images; // Return the successfully generated image URLs
         } catch (error) {
             console.error("Error generating images:", error);
+            return null; // Return null to indicate failure
         } finally {
             setLoading(false);
         }
     };
     
-    useEffect(()=>{
+    useEffect(() => {
         console.log(videoData);
-    },[videoData])
+        if (Object.keys(videoData).length === 4) {
+            saveVideoData(videoData); // Pass videoData explicitly
+        }
+    }, [videoData]);
     
+    
+    const saveVideoData = async (videoData) => {
+        setLoading(true); // Start loading spinner
+        let result = null;
+    
+        try {
+            console.log('Video Data to be saved:', videoData);  // Log the incoming data
+    
+            // Ensure valid JSON structure for script and captions
+            if (typeof videoData.script !== 'object') {
+                throw new Error("Invalid script data, expected a JSON object.");
+            }
+    
+            if (typeof videoData.captions !== 'object') {
+                throw new Error("Invalid captions data, expected a JSON object.");
+            }
+    
+            // Ensure imageList is an array of strings
+            if (!Array.isArray(videoData.imageUrls)) {
+                throw new Error("Invalid imageList, expected an array of strings.");
+            }
+    
+            // Insert data into the database
+            result = await db
+                .insert('videoData')
+                .values({
+                    script: videoData.script,
+                    audioFileUrl: videoData.googleDriveLink,  // Ensure valid URL
+                    captions: videoData.captions,
+                    imageList: videoData.imageUrls,
+                    createdBy: user?.primaryEmailAddress?.emailAddress,
+                })
+                .returning('id');
+    
+            console.log("Insert result:", result);
+    
+            if (result?.length > 0) {
+                setVideoId(result[0].id);  // Set the video ID
+            } else {
+                console.error("No data returned from insert operation.");
+            }
+        } catch (error) {
+            console.error("Error saving video data:", error.message);
+            console.error("Stack trace:", error.stack);   // Log the full stack trace
+        } finally {
+            setPlayVideo(true);
+            setLoading(false);
+        }
+    };
     
     
     
@@ -274,6 +324,7 @@ function CreateNew() {
             </div>
 
             <CustomLoading loading={loading} />
+            <PlayerDialog playVideo={playVideo} videoId={videoId}/>
         </div>
     );
 }
