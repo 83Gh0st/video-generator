@@ -207,7 +207,7 @@ function CreateNew() {
     };
     
     
-    
+  
     const GenerateImage = async (videoScript) => {
         if (!videoScript || videoScript.length === 0) {
             console.error("videoScript is empty or undefined.");
@@ -251,6 +251,7 @@ function CreateNew() {
         }
     };
     
+    
     useEffect(() => {
         console.log(videoData);
         if (Object.keys(videoData).length === 4) {
@@ -266,6 +267,17 @@ function CreateNew() {
         try {
             console.log('Video Data to be saved:', videoData);  // Log the incoming data
     
+            // Ensure 'videoScript' is an array and wrap it in an object with 'scriptSteps' property
+            if (Array.isArray(videoData.videoScript)) {
+                // Assign the videoScript to scriptSteps inside videoData.script
+                videoData.script = { scriptSteps: videoData.videoScript };  // Wrap the array into a script object
+            }
+    
+            // If 'videoData.script' is still not set, throw an error
+            if (!videoData.script || !Array.isArray(videoData.script.scriptSteps)) {
+                throw new Error("Invalid script data. Please provide valid script data as an array.");
+            }
+    
             // Ensure valid JSON structure for script and captions
             if (typeof videoData.script !== 'object') {
                 throw new Error("Invalid script data, expected a JSON object.");
@@ -280,11 +292,16 @@ function CreateNew() {
                 throw new Error("Invalid imageList, expected an array of strings.");
             }
     
+            console.log("Preparing data for insertion...");
+    
+            // Log the final structure before insertion to verify everything
+            console.log("Final videoData before insert:", JSON.stringify(videoData, null, 2));
+    
             // Insert data into the database
             result = await db
-                .insert('videoData')
+                .insert('VideoData')
                 .values({
-                    script: videoData.script,
+                    script: videoData.script,  // Save the correctly wrapped script
                     audioFileUrl: videoData.googleDriveLink,  // Ensure valid URL
                     captions: videoData.captions,
                     imageList: videoData.imageUrls,
@@ -301,12 +318,16 @@ function CreateNew() {
             }
         } catch (error) {
             console.error("Error saving video data:", error.message);
-            console.error("Stack trace:", error.stack);   // Log the full stack trace
+            console.error("Stack trace:", error.stack);  // Log the full stack trace
         } finally {
             setPlayVideo(true);
             setLoading(false);
         }
     };
+    
+    
+    
+    
     
     
     
