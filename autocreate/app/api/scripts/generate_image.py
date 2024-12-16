@@ -25,14 +25,11 @@ if not HF_API_TOKEN:
 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 API_URLS = [
     "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2",  # Stable Diffusion (as fallback)
-    "https://api-inference.huggingface.co/models/CompVis/biggan-deep-256", 
-    "https://api-inference.huggingface.co/models/openai/dall-e-2"
-    "https://api-inference.huggingface.co/models/CompVis/vqgan-clip",  # VQGAN+CLIP
-    "https://api-inference.huggingface.co/models/artbreeder/portraits",  # Artbreeder Portraits
-    "https://api-inference.huggingface.co/models/THU-KEG/cogview",  # CogView
-    "https://api-inference.huggingface.co/models/deepai/text2image",  # DeepAI Text-to-Image
-    "https://api-inference.huggingface.co/models/CompVis/taming-transformer",  # Taming Transformers
-    "https://api-inference.huggingface.co/models/facebook/dpt-large"  # DPT
+    "https://api-inference.huggingface.co/models/CompVis/stable-diffusion-v1-4",  # Stable Diffusion 1.4
+    "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5",  # Stable Diffusion 1.5
+    "https://api-inference.huggingface.co/models/prompthero/openjourney-v4",  # OpenJourney (Stable Diffusion fine-tune)
+    "https://api-inference.huggingface.co/models/nitrosocke/Ghibli-Diffusion",  # Ghibli-style model
+
 ]
 
 # Google Drive credentials and folder ID

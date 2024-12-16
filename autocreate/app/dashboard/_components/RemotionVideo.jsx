@@ -7,26 +7,32 @@ function RemotionVideo({ script, imageList, audioFileUrl, captions }) {
     const [durationInFrames, setDurationInFrames] = useState(0);
 
     useEffect(() => {
-        // Calculate the total duration in frames and set it
-        const totalDuration = (captions[captions?.length - 1]?.end / 1000) * fps;
-        setDurationInFrames(totalDuration);
+        if (captions?.length > 0) {
+            // Calculate the total duration in frames and set it
+            const totalDuration = (captions[captions.length - 1].end / 1000) * fps;
+            setDurationInFrames(totalDuration);
+        }
     }, [captions, fps]);
 
     const getCurrentCaptions = () => {
         const currentTime = (frame / fps) * 1000; // Convert frame to milliseconds
-        const currentCaption = captions.find(
+        const currentCaption = captions?.find(
             (word) => currentTime >= word.start && currentTime <= word.end
         );
-        return currentCaption ? currentCaption?.text : "";
+        return currentCaption ? currentCaption.text : "";
     };
 
-    const durationPerImage = durationInFrames / imageList?.length;
+    const durationPerImage = imageList?.length > 0 ? durationInFrames / imageList.length : 0;
+
+    if (!audioFileUrl) {
+        console.error("Audio file URL is undefined.");
+        return <div style={{ color: "red" }}>Error: Audio file is missing. Please provide a valid URL.</div>;
+    }
 
     return (
         <AbsoluteFill className="bg-black">
             {/* Render Image Sequences */}
-            {imageList?.map((item, index) => 
-            {return(
+            {imageList?.map((item, index) => (
                 <Sequence
                     key={index}
                     from={Math.round(index * durationPerImage)}
@@ -57,10 +63,10 @@ function RemotionVideo({ script, imageList, audioFileUrl, captions }) {
                         </AbsoluteFill>
                     </AbsoluteFill>
                 </Sequence>
-            )})}
+            ))}
 
             {/* Add Background Audio */}
-            <Audio src={audioFileUrl} />
+            {audioFileUrl && <Audio src={audioFileUrl} />}
         </AbsoluteFill>
     );
 }

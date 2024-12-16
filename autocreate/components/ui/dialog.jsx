@@ -74,9 +74,11 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+// Updated DialogDescription to render a div instead of a p tag
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
+    as="div"  // Change this to a div to avoid <p> wrapping issues
     className={cn("text-sm text-muted-foreground", className)}
     {...props} />
 ))

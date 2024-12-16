@@ -1,23 +1,27 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from 'next/server'; // Ensure NextResponse is imported
 
-// Matchers for public and protected routes
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/api/retrive-data(.*)']); // Match the API route
+const isProtectedApiRoute = createRouteMatcher(['/api/retrive-data(.*)']); // Modify as needed
 
 export default clerkMiddleware(async (auth, req) => {
-  console.log("Middleware triggered for:", req.url);
+  console.log("Middleware triggered for:", req.url); // Log all incoming requests
 
-  if (!isPublicRoute(req) && isProtectedRoute(req)) {
+  if (isPublicRoute(req)) {
+    console.log("Public route, skipping authentication:", req.url);
+    return NextResponse.next(); // Continue without any authentication
+  }
+
+  // If this is a protected route
+  if (isProtectedApiRoute(req)) {
     console.log("Protected route, requiring authentication:", req.url);
-    await auth.protect();
+    await auth.protect(); // Ensure authentication for protected routes
   }
 });
 
 export const config = {
   matcher: [
-    // Skip public routes and static files
     '/((?!sign-in|sign-up|_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always apply middleware for API routes
-    '/(api|trpc)(.*)',
+    '/(api|trpc)(.*)', // Make sure the API routes are included here
   ],
 };
